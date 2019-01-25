@@ -43,7 +43,7 @@ template<typename Entity = std::uint32_t>
 class registry {
     using component_family = family<struct internal_registry_component_family>;
     using handler_family = family<struct internal_registry_handler_family>;
-    using component_signal_type = sigh<void(registry &, const Entity)>;
+    using signal_type = sigh<void(registry &, const Entity)>;
     using traits_type = entt_traits<Entity>;
 
     template<typename Type, auto Has, auto... Exclude>
@@ -88,7 +88,7 @@ public:
     /*! @brief Unsigned integer type. */
     using component_type = typename component_family::family_type;
     /*! @brief Type of sink for the given component. */
-    using sink_type = typename component_signal_type::sink_type;
+    using sink_type = typename signal_type::sink_type;
 
     /**
      * @brief Returns the numeric identifier of a type of component at runtime.
@@ -1279,7 +1279,7 @@ public:
 private:
     std::vector<std::unique_ptr<sparse_set<Entity>>> handlers;
     mutable std::vector<std::unique_ptr<sparse_set<Entity>>> pools;
-    mutable std::vector<std::pair<component_signal_type, component_signal_type>> sighs;
+    mutable std::vector<std::pair<signal_type, signal_type>> sighs;
     std::vector<entity_type> entities;
     size_type available{};
     entity_type next{};
