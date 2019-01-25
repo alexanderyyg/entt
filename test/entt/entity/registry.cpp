@@ -372,9 +372,9 @@ TEST(Registry, CreateDestroyEntities) {
 
 TEST(Registry, StandardView) {
     entt::registry<> registry;
-    auto mview = registry.old_view<int, char>();
-    auto iview = registry.old_view<int>();
-    auto cview = registry.old_view<char>();
+    auto mview = registry.view<int, char>();
+    auto iview = registry.view<int>();
+    auto cview = registry.view<char>();
 
     const auto e0 = registry.create();
     registry.assign<int>(e0, 0);
@@ -419,7 +419,7 @@ TEST(Registry, PersistentView) {
 
 TEST(Registry, CleanStandardViewAfterReset) {
     entt::registry<> registry;
-    auto view = registry.old_view<int>();
+    auto view = registry.view<int>();
     registry.assign<int>(registry.create(), 0);
 
     ASSERT_EQ(view.size(), entt::registry<>::size_type{1});
@@ -453,13 +453,13 @@ TEST(Registry, SortSingle) {
     registry.assign<int>(registry.create(), val++);
     registry.assign<int>(registry.create(), val++);
 
-    for(auto entity: registry.old_view<int>()) {
+    for(auto entity: registry.view<int>()) {
         ASSERT_EQ(registry.get<int>(entity), --val);
     }
 
     registry.sort<int>(std::less<int>{});
 
-    for(auto entity: registry.old_view<int>()) {
+    for(auto entity: registry.view<int>()) {
         ASSERT_EQ(registry.get<int>(entity), val++);
     }
 }
@@ -476,22 +476,22 @@ TEST(Registry, SortMulti) {
         registry.assign<int>(entity, ival++);
     }
 
-    for(auto entity: registry.old_view<unsigned int>()) {
+    for(auto entity: registry.view<unsigned int>()) {
         ASSERT_EQ(registry.get<unsigned int>(entity), --uval);
     }
 
-    for(auto entity: registry.old_view<int>()) {
+    for(auto entity: registry.view<int>()) {
         ASSERT_EQ(registry.get<int>(entity), --ival);
     }
 
     registry.sort<unsigned int>(std::less<unsigned int>{});
     registry.sort<int, unsigned int>();
 
-    for(auto entity: registry.old_view<unsigned int>()) {
+    for(auto entity: registry.view<unsigned int>()) {
         ASSERT_EQ(registry.get<unsigned int>(entity), uval++);
     }
 
-    for(auto entity: registry.old_view<int>()) {
+    for(auto entity: registry.view<int>()) {
         ASSERT_EQ(registry.get<int>(entity), ival++);
     }
 }
@@ -554,16 +554,16 @@ TEST(Registry, MergeTwoRegistries) {
     auto eq = [](auto begin, auto end) { ASSERT_EQ(begin, end); };
     auto ne = [](auto begin, auto end) { ASSERT_NE(begin, end); };
 
-    eq(dst.old_view<int, float, double>().begin(), dst.old_view<int, float, double>().end());
-    eq(dst.old_view<char, float, int>().begin(), dst.old_view<char, float, int>().end());
+    eq(dst.view<int, float, double>().begin(), dst.view<int, float, double>().end());
+    eq(dst.view<char, float, int>().begin(), dst.view<char, float, int>().end());
 
-    merge(src.old_view<int>(), dst);
-    merge(src.old_view<char>(), dst);
-    merge(src.old_view<double>(), dst);
-    merge(src.old_view<float>(), dst);
+    merge(src.view<int>(), dst);
+    merge(src.view<char>(), dst);
+    merge(src.view<double>(), dst);
+    merge(src.view<float>(), dst);
 
-    ne(dst.old_view<int, float, double>().begin(), dst.old_view<int, float, double>().end());
-    ne(dst.old_view<char, float, int>().begin(), dst.old_view<char, float, int>().end());
+    ne(dst.view<int, float, double>().begin(), dst.view<int, float, double>().end());
+    ne(dst.view<char, float, int>().begin(), dst.view<char, float, int>().end());
 }
 
 TEST(Registry, Signals) {

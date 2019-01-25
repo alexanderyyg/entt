@@ -32,9 +32,9 @@ struct as_view {
      * @tparam Component Type of components used to construct the view.
      * @return A newly created standard view.
      */
-    template<typename... Component>
-    inline operator entt::old_view<Entity, Component...>() const {
-        return reg.template old_view<Component...>();
+    template<typename... Induce, typename... Component>
+    inline operator entt::view<policy<Induce...>, Entity, Component...>() const {
+        return reg.template view<Component...>(policy<Induce...>{});
     }
 
     /**

@@ -21,6 +21,7 @@
 #include "../signal/sigh.hpp"
 #include "entity.hpp"
 #include "entt_traits.hpp"
+#include "policy.hpp"
 #include "snapshot.hpp"
 #include "sparse_set.hpp"
 #include "view.hpp"
@@ -469,7 +470,7 @@ public:
      */
     template<typename... Component>
     void destroy() {
-        for(const auto entity: old_view<Component...>()) {
+        for(const auto entity: view<Component...>()) {
             destroy(entity);
         }
     }
@@ -1001,49 +1002,64 @@ public:
         });
     }
 
-    /**
-     * @brief Returns a standard view for the given components.
-     *
-     * This kind of views are created on the fly and share with the registry its
-     * internal data structures.<br/>
-     * Feel free to discard a view after the use. Creating and destroying a view
-     * is an incredibly cheap operation because they do not require any type of
-     * initialization.<br/>
-     * As a rule of thumb, storing a view should never be an option.
-     *
-     * Standard views do their best to iterate the smallest set of candidate
-     * entities. In particular:
-     *
-     * * Single component views are incredibly fast and iterate a packed array
-     *   of entities, all of which has the given component.
-     * * Multi component views look at the number of entities available for each
-     *   component and pick up a reference to the smallest set of candidates to
-     *   test for the given components.
-     *
-     * @note
-     * Multi component views are pretty fast. However their performance tend to
-     * degenerate when the number of components to iterate grows up and the most
-     * of the entities have all the given components.<br/>
-     * To get a performance boost, consider using a persistent_view instead.
-     *
-     * @sa view
-     * @sa view<Entity, Component>
-     * @sa persistent_view
-     * @sa runtime_view
-     *
-     * @tparam Component Type of components used to construct the view.
-     * @return A newly created standard view.
-     */
-    template<typename... Component>
-    entt::old_view<Entity, Component...> old_view() {
-        return { &assure<Component>()... };
+    // /**
+    //  * @brief Returns a standard view for the given components.
+    //  *
+    //  * This kind of views are created on the fly and share with the registry its
+    //  * internal data structures.<br/>
+    //  * Feel free to discard a view after the use. Creating and destroying a view
+    //  * is an incredibly cheap operation because they do not require any type of
+    //  * initialization.<br/>
+    //  * As a rule of thumb, storing a view should never be an option.
+    //  *
+    //  * Standard views do their best to iterate the smallest set of candidate
+    //  * entities. In particular:
+    //  *
+    //  * * Single component views are incredibly fast and iterate a packed array
+    //  *   of entities, all of which has the given component.
+    //  * * Multi component views look at the number of entities available for each
+    //  *   component and pick up a reference to the smallest set of candidates to
+    //  *   test for the given components.
+    //  *
+    //  * @note
+    //  * Multi component views are pretty fast. However their performance tend to
+    //  * degenerate when the number of components to iterate grows up and the most
+    //  * of the entities have all the given components.<br/>
+    //  * To get a performance boost, consider using a persistent_view instead.
+    //  *
+    //  * @sa view
+    //  * @sa view<Entity, Component>
+    //  * @sa persistent_view
+    //  * @sa runtime_view
+    //  *
+    //  * @tparam Component Type of components used to construct the view.
+    //  * @return A newly created standard view.
+    //  */
+    // template<typename... Component>
+    // entt::old_view<Entity, Component...> old_view() {
+    //     return { &assure<Component>()... };
+    // }
+    //
+    // /*! @copydoc view */
+    // template<typename... Component>
+    // inline entt::old_view<Entity, Component...> old_view() const {
+    //     static_assert(std::conjunction_v<std::is_const<Component>...>);
+    //     return const_cast<registry *>(this)->old_view<Component...>();
+    // }
+
+    template<typename... Component, typename Policy = no_policy_t>
+    entt::view<Policy, Entity, Component...> view(Policy = no_policy) {
+        if constexpr(std::is_same_v<Policy, no_policy_t>) {
+            return { &assure<Component>()... };
+        } else {
+            // TODO
+        }
     }
 
-    /*! @copydoc view */
-    template<typename... Component>
-    inline entt::old_view<Entity, Component...> old_view() const {
+    template<typename... Component, typename Policy = no_policy_t>
+    inline entt::view<Policy, Entity, Component...> view(Policy = no_policy) const {
         static_assert(std::conjunction_v<std::is_const<Component>...>);
-        return const_cast<registry *>(this)->old_view<Component...>();
+        return const_cast<registry *>(this)->view<Component...>(Policy{});
     }
 
     /**
@@ -1105,7 +1121,7 @@ public:
             ((sighs[component_family::type<Exclude>].first.sink().template connect<&registry::destroy_if<handler_type>>()), ...);
             ((sighs[component_family::type<Component>].second.sink().template connect<&registry::destroy_if<handler_type>>()), ...);
 
-            for(const auto entity: old_view<Component...>()) {
+            for(const auto entity: view<Component...>()) {
                 if(!(assure<Exclude>().has(entity) || ...)) {
                     direct->construct(entity);
                 }

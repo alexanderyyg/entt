@@ -9,8 +9,8 @@ TEST(Helper, AsView) {
     entt::registry<> registry;
     const entt::registry<> cregistry;
 
-    ([](entt::old_view<entity_type, int, char>) {})(entt::as_view{registry});
-    ([](entt::old_view<entity_type, const double>) {})(entt::as_view{cregistry});
+    ([](entt::view<entt::no_policy_t, entity_type, int, char>) {})(entt::as_view{registry});
+    ([](entt::view<entt::no_policy_t, entity_type, const double>) {})(entt::as_view{cregistry});
 
     ([](entt::old_persistent_view<entity_type, int, char>) {})(entt::as_view{registry});
     ([](entt::old_persistent_view<entity_type, const double, const float>) {})(entt::as_view{cregistry});
@@ -72,14 +72,14 @@ TEST(Helper, Label) {
     ASSERT_FALSE(registry.has<entt::label<"barfoo"_hs>>(entity));
     ASSERT_TRUE(registry.has<entt::label<"foobar"_hs>>(entity));
 
-    for(auto entity: registry.old_view<int, entt::label<"foobar"_hs>>()) {
+    for(auto entity: registry.view<int, entt::label<"foobar"_hs>>()) {
         (void)entity;
         ++counter;
     }
 
     ASSERT_NE(counter, 0);
 
-    for(auto entity: registry.old_view<entt::label<"foobar"_hs>>()) {
+    for(auto entity: registry.view<entt::label<"foobar"_hs>>()) {
         (void)entity;
         --counter;
     }

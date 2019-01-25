@@ -81,7 +81,7 @@ TEST(Benchmark, IterateCreateDeleteSingleComponent) {
 
     timer timer;
 
-    auto view = registry.old_view<position>();
+    auto view = registry.view<position>();
 
     for(int i = 0; i < 10000; i++) {
         for(int j = 0; j < 10000; j++) {
@@ -111,7 +111,7 @@ TEST(Benchmark, IterateSingleComponent1M) {
 
     auto test = [&registry](auto func) {
         timer timer;
-        registry.old_view<position>().each(func);
+        registry.view<position>().each(func);
         timer.elapsed();
     };
 
@@ -159,7 +159,7 @@ TEST(Benchmark, IterateTwoComponents1M) {
 
     auto test = [&registry](auto func) {
         timer timer;
-        registry.old_view<position, velocity>().each(func);
+        registry.view<position, velocity>().each(func);
         timer.elapsed();
     };
 
@@ -185,7 +185,7 @@ TEST(Benchmark, IterateTwoComponents1MHalf) {
 
     auto test = [&registry](auto func) {
         timer timer;
-        registry.old_view<position, velocity>().each(func);
+        registry.view<position, velocity>().each(func);
         timer.elapsed();
     };
 
@@ -211,7 +211,7 @@ TEST(Benchmark, IterateTwoComponents1MOne) {
 
     auto test = [&registry](auto func) {
         timer timer;
-        registry.old_view<position, velocity>().each(func);
+        registry.view<position, velocity>().each(func);
         timer.elapsed();
     };
 
@@ -348,7 +348,7 @@ TEST(Benchmark, IterateFiveComponents1M) {
 
     auto test = [&registry](auto func) {
         timer timer;
-        registry.old_view<position, velocity, comp<1>, comp<2>, comp<3>>().each(func);
+        registry.view<position, velocity, comp<1>, comp<2>, comp<3>>().each(func);
         timer.elapsed();
     };
 
@@ -377,7 +377,7 @@ TEST(Benchmark, IterateFiveComponents1MHalf) {
 
     auto test = [&registry](auto func) {
         timer timer;
-        registry.old_view<position, velocity, comp<1>, comp<2>, comp<3>>().each(func);
+        registry.view<position, velocity, comp<1>, comp<2>, comp<3>>().each(func);
         timer.elapsed();
     };
 
@@ -406,7 +406,7 @@ TEST(Benchmark, IterateFiveComponents1MOne) {
 
     auto test = [&registry](auto func) {
         timer timer;
-        registry.old_view<position, velocity, comp<1>, comp<2>, comp<3>>().each(func);
+        registry.view<position, velocity, comp<1>, comp<2>, comp<3>>().each(func);
         timer.elapsed();
     };
 
@@ -587,7 +587,7 @@ TEST(Benchmark, IterateTenComponents1M) {
 
     auto test = [&registry](auto func) {
         timer timer;
-        registry.old_view<position, velocity, comp<1>, comp<2>, comp<3>, comp<4>, comp<5>, comp<6>, comp<7>, comp<8>>().each(func);
+        registry.view<position, velocity, comp<1>, comp<2>, comp<3>, comp<4>, comp<5>, comp<6>, comp<7>, comp<8>>().each(func);
         timer.elapsed();
     };
 
@@ -621,7 +621,7 @@ TEST(Benchmark, IterateTenComponents1MHalf) {
 
     auto test = [&registry](auto func) {
         timer timer;
-        registry.old_view<position, velocity, comp<1>, comp<2>, comp<3>, comp<4>, comp<5>, comp<6>, comp<7>, comp<8>>().each(func);
+        registry.view<position, velocity, comp<1>, comp<2>, comp<3>, comp<4>, comp<5>, comp<6>, comp<7>, comp<8>>().each(func);
         timer.elapsed();
     };
 
@@ -655,7 +655,7 @@ TEST(Benchmark, IterateTenComponents1MOne) {
 
     auto test = [&registry](auto func) {
         timer timer;
-        registry.old_view<position, velocity, comp<1>, comp<2>, comp<3>, comp<4>, comp<5>, comp<6>, comp<7>, comp<8>>().each(func);
+        registry.view<position, velocity, comp<1>, comp<2>, comp<3>, comp<4>, comp<5>, comp<6>, comp<7>, comp<8>>().each(func);
         timer.elapsed();
     };
 

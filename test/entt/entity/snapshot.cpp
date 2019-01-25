@@ -223,16 +223,16 @@ TEST(Snapshot, Iterator) {
     output_archive<storage_type> output{storage};
     input_archive<storage_type> input{storage};
 
-    const auto view = registry.old_view<a_component>();
+    const auto view = registry.view<a_component>();
     const auto size = view.size();
 
     registry.snapshot().component<another_component>(output, view.begin(), view.end());
     registry.reset();
     registry.loader().component<another_component>(input);
 
-    ASSERT_EQ(registry.old_view<another_component>().size(), size);
+    ASSERT_EQ(registry.view<another_component>().size(), size);
 
-    registry.old_view<another_component>().each([](const auto entity, const auto &) {
+    registry.view<another_component>().each([](const auto entity, const auto &) {
         ASSERT_TRUE(entity % 2);
     });
 }
@@ -278,7 +278,7 @@ TEST(Snapshot, Continuous) {
         }
     }
 
-    src.old_view<what_a_component>().each([&entities](auto, auto &what_a_component) {
+    src.view<what_a_component>().each([&entities](auto, auto &what_a_component) {
         what_a_component.quux.insert(what_a_component.quux.begin(), entities.begin(), entities.end());
     });
 
@@ -305,12 +305,12 @@ TEST(Snapshot, Continuous) {
         ++a_component_cnt;
     });
 
-    dst.old_view<another_component>().each([&another_component_cnt](auto, const auto &component) {
+    dst.view<another_component>().each([&another_component_cnt](auto, const auto &component) {
         ASSERT_EQ(component.value, component.key < 0 ? -1 : component.key);
         ++another_component_cnt;
     });
 
-    dst.old_view<what_a_component>().each([&dst, &what_a_component_cnt](auto entity, const auto &component) {
+    dst.view<what_a_component>().each([&dst, &what_a_component_cnt](auto entity, const auto &component) {
         ASSERT_EQ(entity, component.bar);
 
         for(auto entity: component.quux) {
@@ -320,7 +320,7 @@ TEST(Snapshot, Continuous) {
         ++what_a_component_cnt;
     });
 
-    src.old_view<another_component>().each([](auto, auto &component) {
+    src.view<another_component>().each([](auto, auto &component) {
         component.value = 2 * component.key;
     });
 
@@ -342,13 +342,13 @@ TEST(Snapshot, Continuous) {
     ASSERT_EQ(dst.size<another_component>(), another_component_cnt);
     ASSERT_EQ(dst.size<what_a_component>(), what_a_component_cnt);
 
-    dst.old_view<another_component>().each([](auto, auto &component) {
+    dst.view<another_component>().each([](auto, auto &component) {
         ASSERT_EQ(component.value, component.key < 0 ? -1 : (2 * component.key));
     });
 
     entity = src.create();
 
-    src.old_view<what_a_component>().each([entity](auto, auto &component) {
+    src.view<what_a_component>().each([entity](auto, auto &component) {
         component.bar = entity;
     });
 
@@ -362,12 +362,12 @@ TEST(Snapshot, Continuous) {
             .component<what_a_component, a_component, another_component>(input, &what_a_component::bar, &what_a_component::quux)
             .orphans();
 
-    dst.old_view<what_a_component>().each([&loader, entity](auto, auto &component) {
+    dst.view<what_a_component>().each([&loader, entity](auto, auto &component) {
         ASSERT_EQ(component.bar, loader.map(entity));
     });
 
     entities.clear();
-    for(auto entity: src.old_view<a_component>()) {
+    for(auto entity: src.view<a_component>()) {
         entities.push_back(entity);
     }
 
@@ -385,7 +385,7 @@ TEST(Snapshot, Continuous) {
             .orphans()
             .shrink();
 
-    dst.old_view<what_a_component>().each([&dst](auto, auto &component) {
+    dst.view<what_a_component>().each([&dst](auto, auto &component) {
         ASSERT_FALSE(dst.valid(component.bar));
     });
 
@@ -393,7 +393,7 @@ TEST(Snapshot, Continuous) {
 
     entity = src.create();
 
-    src.old_view<what_a_component>().each([entity](auto, auto &component) {
+    src.view<what_a_component>().each([entity](auto, auto &component) {
         component.bar = entity;
     });
 
