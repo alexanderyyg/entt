@@ -68,7 +68,7 @@ class registry;
  * @tparam Component Types of components iterated by the view.
  */
 template<typename Entity, typename... Component>
-class persistent_view {
+class old_persistent_view {
     static_assert(sizeof...(Component));
 
     /*! @brief A registry is allowed to create views. */
@@ -78,7 +78,7 @@ class persistent_view {
     using pool_type = std::conditional_t<std::is_const_v<Comp>, const sparse_set<Entity, std::remove_const_t<Comp>>, sparse_set<Entity, Comp>>;
 
     // we could use pool_type<Component> *..., but vs complains about it and refuses to compile for unknown reasons (likely a bug)
-    persistent_view(sparse_set<Entity> *handler, sparse_set<Entity, std::remove_const_t<Component>> *... pools) ENTT_NOEXCEPT
+    old_persistent_view(sparse_set<Entity> *handler, sparse_set<Entity, std::remove_const_t<Component>> *... pools) ENTT_NOEXCEPT
         : handler{handler},
           pools{pools...}
     {}
@@ -92,14 +92,14 @@ public:
     using iterator_type = typename sparse_set<Entity>::iterator_type;
 
     /*! @brief Default copy constructor. */
-    persistent_view(const persistent_view &) = default;
+    old_persistent_view(const old_persistent_view &) = default;
     /*! @brief Default move constructor. */
-    persistent_view(persistent_view &&) = default;
+    old_persistent_view(old_persistent_view &&) = default;
 
     /*! @brief Default copy assignment operator. @return This view. */
-    persistent_view & operator=(const persistent_view &) = default;
+    old_persistent_view & operator=(const old_persistent_view &) = default;
     /*! @brief Default move assignment operator. @return This view. */
-    persistent_view & operator=(persistent_view &&) = default;
+    old_persistent_view & operator=(old_persistent_view &&) = default;
 
     /**
      * @brief Returns the number of entities that have the given components.
@@ -325,7 +325,7 @@ private:
  * @tparam Component Types of components iterated by the view.
  */
 template<typename Entity, typename... Component>
-class view {
+class old_view {
     static_assert(sizeof...(Component) > 1);
 
     /*! @brief A registry is allowed to create views. */
@@ -342,7 +342,7 @@ class view {
     using traits_type = entt_traits<Entity>;
 
     class iterator {
-        friend class view<Entity, Component...>;
+        friend class old_view<Entity, Component...>;
 
         using extent_type = typename sparse_set<Entity>::size_type;
 
@@ -416,7 +416,7 @@ class view {
     };
 
     // we could use pool_type<Component> *..., but vs complains about it and refuses to compile for unknown reasons (likely a bug)
-    view(sparse_set<Entity, std::remove_const_t<Component>> *... pools) ENTT_NOEXCEPT
+    old_view(sparse_set<Entity, std::remove_const_t<Component>> *... pools) ENTT_NOEXCEPT
         : pools{pools...}
     {}
 
@@ -488,14 +488,14 @@ public:
     using iterator_type = iterator;
 
     /*! @brief Default copy constructor. */
-    view(const view &) = default;
+    old_view(const old_view &) = default;
     /*! @brief Default move constructor. */
-    view(view &&) = default;
+    old_view(old_view &&) = default;
 
     /*! @brief Default copy assignment operator. @return This view. */
-    view & operator=(const view &) = default;
+    old_view & operator=(const old_view &) = default;
     /*! @brief Default move assignment operator. @return This view. */
-    view & operator=(view &&) = default;
+    old_view & operator=(old_view &&) = default;
 
     /**
      * @brief Estimates the number of entities that have the given components.
@@ -672,13 +672,13 @@ private:
  * @tparam Component Type of component iterated by the view.
  */
 template<typename Entity, typename Component>
-class view<Entity, Component> {
+class old_view<Entity, Component> {
     /*! @brief A registry is allowed to create views. */
     friend class registry<Entity>;
 
     using pool_type = std::conditional_t<std::is_const_v<Component>, const sparse_set<Entity, std::remove_const_t<Component>>, sparse_set<Entity, Component>>;
 
-    view(pool_type *pool) ENTT_NOEXCEPT
+    old_view(pool_type *pool) ENTT_NOEXCEPT
         : pool{pool}
     {}
 
@@ -693,14 +693,14 @@ public:
     using iterator_type = typename sparse_set<Entity>::iterator_type;
 
     /*! @brief Default copy constructor. */
-    view(const view &) = default;
+    old_view(const old_view &) = default;
     /*! @brief Default move constructor. */
-    view(view &&) = default;
+    old_view(old_view &&) = default;
 
     /*! @brief Default copy assignment operator. @return This view. */
-    view & operator=(const view &) = default;
+    old_view & operator=(const old_view &) = default;
     /*! @brief Default move assignment operator. @return This view. */
-    view & operator=(view &&) = default;
+    old_view & operator=(old_view &&) = default;
 
     /**
      * @brief Returns the number of entities that have the given component.

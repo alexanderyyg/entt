@@ -335,11 +335,11 @@ TEST(Mod, Duktape) {
         FAIL();
     }
 
-    ASSERT_EQ(registry.view<duktape_runtime>().size(), 0u);
-    ASSERT_EQ(registry.view<position>().size(), 3u);
-    ASSERT_EQ(registry.view<renderable>().size(), 2u);
+    ASSERT_EQ(registry.old_view<duktape_runtime>().size(), 0u);
+    ASSERT_EQ(registry.old_view<position>().size(), 3u);
+    ASSERT_EQ(registry.old_view<renderable>().size(), 2u);
 
-    registry.view<position>().each([&registry](auto entity, const auto &position) {
+    registry.old_view<position>().each([&registry](auto entity, const auto &position) {
         ASSERT_FALSE(registry.has<duktape_runtime>(entity));
 
         if(registry.has<renderable>(entity)) {
@@ -364,11 +364,11 @@ TEST(Mod, Duktape) {
         FAIL();
     }
 
-    ASSERT_EQ(registry.view<duktape_runtime>().size(), 1u);
-    ASSERT_EQ(registry.view<position>().size(), 3u);
-    ASSERT_EQ(registry.view<renderable>().size(), 2u);
+    ASSERT_EQ(registry.old_view<duktape_runtime>().size(), 1u);
+    ASSERT_EQ(registry.old_view<position>().size(), 3u);
+    ASSERT_EQ(registry.old_view<renderable>().size(), 2u);
 
-    registry.view<duktape_runtime>().each([](auto, const duktape_runtime &runtime) {
+    registry.old_view<duktape_runtime>().each([](auto, const duktape_runtime &runtime) {
         ASSERT_EQ(runtime.components.size(), 2u);
     });
 
@@ -383,11 +383,11 @@ TEST(Mod, Duktape) {
         FAIL();
     }
 
-    ASSERT_EQ(registry.view<duktape_runtime>().size(), 1u);
-    ASSERT_EQ(registry.view<position>().size(), 3u);
-    ASSERT_EQ(registry.view<renderable>().size(), 2u);
+    ASSERT_EQ(registry.old_view<duktape_runtime>().size(), 1u);
+    ASSERT_EQ(registry.old_view<position>().size(), 3u);
+    ASSERT_EQ(registry.old_view<renderable>().size(), 2u);
 
-    registry.view<position, renderable, duktape_runtime>().each([](auto, const position &position, const auto &...) {
+    registry.old_view<position, renderable, duktape_runtime>().each([](auto, const position &position, const auto &...) {
         ASSERT_EQ(position.x, -100.);
         ASSERT_EQ(position.y, -100.);
     });
@@ -406,9 +406,9 @@ TEST(Mod, Duktape) {
         FAIL();
     }
 
-    ASSERT_EQ(registry.view<duktape_runtime>().size(), 0u);
-    ASSERT_EQ(registry.view<position>().size(), 0u);
-    ASSERT_EQ(registry.view<renderable>().size(), 2u);
+    ASSERT_EQ(registry.old_view<duktape_runtime>().size(), 0u);
+    ASSERT_EQ(registry.old_view<position>().size(), 0u);
+    ASSERT_EQ(registry.old_view<renderable>().size(), 2u);
 
     duk_destroy_heap(ctx);
 }

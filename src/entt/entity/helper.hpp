@@ -33,8 +33,8 @@ struct as_view {
      * @return A newly created standard view.
      */
     template<typename... Component>
-    inline operator entt::view<Entity, Component...>() const {
-        return reg.template view<Component...>();
+    inline operator entt::old_view<Entity, Component...>() const {
+        return reg.template old_view<Component...>();
     }
 
     /**
@@ -43,8 +43,8 @@ struct as_view {
      * @return A newly created persistent view.
      */
     template<typename... Component>
-    inline operator entt::persistent_view<Entity, Component...>() const {
-        return reg.template persistent_view<Component...>();
+    inline operator entt::old_persistent_view<Entity, Component...>() const {
+        return reg.template old_persistent_view<Component...>();
     }
 
 private:

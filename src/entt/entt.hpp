@@ -9,6 +9,7 @@
 #include "entity/entity.hpp"
 #include "entity/entt_traits.hpp"
 #include "entity/helper.hpp"
+#include "entity/policy.hpp"
 #include "entity/prototype.hpp"
 #include "entity/registry.hpp"
 #include "entity/snapshot.hpp"

@@ -469,7 +469,7 @@ public:
      */
     template<typename... Component>
     void destroy() {
-        for(const auto entity: view<Component...>()) {
+        for(const auto entity: old_view<Component...>()) {
             destroy(entity);
         }
     }
@@ -1035,15 +1035,15 @@ public:
      * @return A newly created standard view.
      */
     template<typename... Component>
-    entt::view<Entity, Component...> view() {
+    entt::old_view<Entity, Component...> old_view() {
         return { &assure<Component>()... };
     }
 
     /*! @copydoc view */
     template<typename... Component>
-    inline entt::view<Entity, Component...> view() const {
+    inline entt::old_view<Entity, Component...> old_view() const {
         static_assert(std::conjunction_v<std::is_const<Component>...>);
-        return const_cast<registry *>(this)->view<Component...>();
+        return const_cast<registry *>(this)->old_view<Component...>();
     }
 
     /**
@@ -1084,7 +1084,7 @@ public:
      * @return A newly created persistent view.
      */
     template<typename... Component, typename... Exclude>
-    entt::persistent_view<Entity, Component...> persistent_view(type_list<Exclude...> = {}) {
+    entt::old_persistent_view<Entity, Component...> old_persistent_view(type_list<Exclude...> = {}) {
         static_assert(sizeof...(Component));
         using handler_type = type_list<Component..., type_list<Exclude...>>;
         const auto htype = handler_family::type<handler_type>;
@@ -1105,7 +1105,7 @@ public:
             ((sighs[component_family::type<Exclude>].first.sink().template connect<&registry::destroy_if<handler_type>>()), ...);
             ((sighs[component_family::type<Component>].second.sink().template connect<&registry::destroy_if<handler_type>>()), ...);
 
-            for(const auto entity: view<Component...>()) {
+            for(const auto entity: old_view<Component...>()) {
                 if(!(assure<Exclude>().has(entity) || ...)) {
                     direct->construct(entity);
                 }
@@ -1117,9 +1117,9 @@ public:
 
     /*! @copydoc persistent_view */
     template<typename... Component, typename... Exclude>
-    inline entt::persistent_view<Entity, Component...> persistent_view(type_list<Exclude...> = {}) const {
+    inline entt::old_persistent_view<Entity, Component...> old_persistent_view(type_list<Exclude...> = {}) const {
         static_assert(std::conjunction_v<std::is_const<Component>...>);
-        return const_cast<registry *>(this)->persistent_view<Component...>(type_list<Exclude...>{});
+        return const_cast<registry *>(this)->old_persistent_view<Component...>(type_list<Exclude...>{});
     }
 
     /**
