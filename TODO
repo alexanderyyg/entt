@@ -29,4 +29,5 @@ Ready to go:
 * preferred approach (hints): registry.view<A, B, C>(exclude<D>, policy<A, B>)?
 * previous model used for persistent views as default view, query as old fashioned views
 * is it enough to store a view as <direct set, length>?
+* update as_view to support policies + tests
 * update doc + update tests

@@ -9,12 +9,11 @@ template<typename...>
 struct policy {};
 
 
-using no_policy_t = policy<void>;
-using group_policy_t = policy<>;
+constexpr policy<> group_policy;
 
 
-constexpr no_policy_t no_policy;
-constexpr group_policy_t group_policy;
+template<typename... Type>
+constexpr policy<Type...> induce;
 
 
 }

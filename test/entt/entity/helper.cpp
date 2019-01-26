@@ -9,11 +9,8 @@ TEST(Helper, AsView) {
     entt::registry<> registry;
     const entt::registry<> cregistry;
 
-    ([](entt::view<entt::no_policy_t, entity_type, int, char>) {})(entt::as_view{registry});
-    ([](entt::view<entt::no_policy_t, entity_type, const double>) {})(entt::as_view{cregistry});
-
-    ([](entt::old_persistent_view<entity_type, int, char>) {})(entt::as_view{registry});
-    ([](entt::old_persistent_view<entity_type, const double, const float>) {})(entt::as_view{cregistry});
+    ([](entt::view<entity_type, int, char>) {})(entt::as_view{registry});
+    ([](entt::view<entity_type, const double>) {})(entt::as_view{cregistry});
 }
 
 TEST(Helper, Dependency) {

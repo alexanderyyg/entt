@@ -32,19 +32,9 @@ struct as_view {
      * @tparam Component Type of components used to construct the view.
      * @return A newly created standard view.
      */
-    template<typename... Induce, typename... Component>
-    inline operator entt::view<policy<Induce...>, Entity, Component...>() const {
-        return reg.template view<Component...>(policy<Induce...>{});
-    }
-
-    /**
-     * @brief Conversion function from a registry to a persistent view.
-     * @tparam Component Types of components used to construct the view.
-     * @return A newly created persistent view.
-     */
     template<typename... Component>
-    inline operator entt::old_persistent_view<Entity, Component...>() const {
-        return reg.template old_persistent_view<Component...>();
+    inline operator entt::view<Entity, Component...>() const {
+        return reg.template view<Component...>();
     }
 
 private:

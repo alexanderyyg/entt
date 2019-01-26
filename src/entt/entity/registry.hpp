@@ -1047,96 +1047,144 @@ public:
     //     return const_cast<registry *>(this)->old_view<Component...>();
     // }
 
-    template<typename... Component, typename Policy = no_policy_t>
-    entt::view<Policy, Entity, Component...> view(Policy = no_policy) {
-        if constexpr(std::is_same_v<Policy, no_policy_t>) {
-            return { &assure<Component>()... };
-        } else {
-            // TODO
-        }
-    }
-
-    template<typename... Component, typename Policy = no_policy_t>
-    inline entt::view<Policy, Entity, Component...> view(Policy = no_policy) const {
-        static_assert(std::conjunction_v<std::is_const<Component>...>);
-        return const_cast<registry *>(this)->view<Component...>(Policy{});
-    }
-
-    /**
-     * @brief Returns a persistent view for the given components.
-     *
-     * This kind of views are created on the fly and share with the registry its
-     * internal data structures.<br/>
-     * Feel free to discard a view after the use. Creating and destroying a view
-     * is an incredibly cheap operation because they do not require any type of
-     * initialization, but for the first time they are used. That's mainly
-     * because of the internal data structures of the registry that are
-     * dedicated to this kind of views and that don't exist yet the very first
-     * time they are requested.<br/>
-     * As a rule of thumb, storing a view should never be an option.
-     *
-     * Persistent views are the right choice to iterate entities when the number
-     * of components grows up and the most of the entities have all the given
-     * components. They are also the only type of views that supports filters
-     * without incurring in a loss of performance during iterations.<br/>
-     * However, persistent views have also drawbacks:
-     *
-     * * Each kind of persistent view requires a dedicated data structure that
-     *   is allocated within the registry and it increases memory pressure.
-     * * Internal data structures used to construct persistent views must be
-     *   kept updated and it affects slightly construction and destruction of
-     *   entities and components, as well as sort functionalities.
-     *
-     * That being said, persistent views are an incredibly powerful tool if used
-     * with care and offer a boost of performance undoubtedly.
-     *
-     * @sa view
-     * @sa view<Entity, Component>
-     * @sa persistent_view
-     * @sa runtime_view
-     *
-     * @tparam Component Types of components used to construct the view.
-     * @tparam Exclude Types of components used to filter the view.
-     * @return A newly created persistent view.
-     */
-    template<typename... Component, typename... Exclude>
-    entt::old_persistent_view<Entity, Component...> old_persistent_view(type_list<Exclude...> = {}) {
+    template<typename... Component>
+    entt::view<Entity, Component...> view() {
         static_assert(sizeof...(Component));
-        using handler_type = type_list<Component..., type_list<Exclude...>>;
-        const auto htype = handler_family::type<handler_type>;
+        return { &assure<Component>()... };
+    }
 
-        if(!(htype < handlers.size())) {
-            handlers.resize(htype + 1);
-        }
+    template<typename... Component>
+    inline entt::view<Entity, Component...> view() const {
+        static_assert(std::conjunction_v<std::is_const<Component>...>);
+        return const_cast<registry *>(this)->view<Component...>();
+    }
 
-        if(!handlers[htype]) {
-            (assure<Component>(), ...);
-            (assure<Exclude>(), ...);
+    template<typename... Component, typename... Exclude, typename... Induce>
+    entt::view<policy<Induce...>, Entity, Component...> view(type_list<Exclude...>, policy<Induce...>) {
+        if(sizeof...(Induce)) {
+            // TODO
+        } else {
+            using handler_type = type_list<Component..., type_list<Exclude...>>;
+            const auto htype = handler_family::type<handler_type>;
 
-            handlers[htype] = std::make_unique<sparse_set<entity_type>>();
-            auto *direct = handlers[htype].get();
+            if(!(htype < handlers.size())) {
+                handlers.resize(htype + 1);
+            }
 
-            ((sighs[component_family::type<Component>].first.sink().template connect<&construct_if<handler_type, &registry::has<Component...>, &registry::has<Exclude>...>>()), ...);
-            ((sighs[component_family::type<Exclude>].second.sink().template connect<&construct_if<handler_type, &registry::has<Component...>, &registry::has<Exclude>...>>()), ...);
-            ((sighs[component_family::type<Exclude>].first.sink().template connect<&registry::destroy_if<handler_type>>()), ...);
-            ((sighs[component_family::type<Component>].second.sink().template connect<&registry::destroy_if<handler_type>>()), ...);
+            if(!handlers[htype]) {
+                (assure<Component>(), ...);
+                (assure<Exclude>(), ...);
 
-            for(const auto entity: view<Component...>()) {
-                if(!(assure<Exclude>().has(entity) || ...)) {
-                    direct->construct(entity);
+                handlers[htype] = std::make_unique<sparse_set<entity_type>>();
+                auto *direct = handlers[htype].get();
+
+                ((sighs[component_family::type<Component>].first.sink().template connect<&construct_if<handler_type, &registry::has<Component...>, &registry::has<Exclude>...>>()), ...);
+                ((sighs[component_family::type<Exclude>].second.sink().template connect<&construct_if<handler_type, &registry::has<Component...>, &registry::has<Exclude>...>>()), ...);
+                ((sighs[component_family::type<Exclude>].first.sink().template connect<&registry::destroy_if<handler_type>>()), ...);
+                ((sighs[component_family::type<Component>].second.sink().template connect<&registry::destroy_if<handler_type>>()), ...);
+
+                for(const auto entity: view<Component...>()) {
+                    if(!(assure<Exclude>().has(entity) || ...)) {
+                        direct->construct(entity);
+                    }
                 }
             }
+
+            return { handlers[htype].get(), &assure<Component>()... };
         }
-
-        return { handlers[htype].get(), &assure<Component>()... };
     }
 
-    /*! @copydoc persistent_view */
-    template<typename... Component, typename... Exclude>
-    inline entt::old_persistent_view<Entity, Component...> old_persistent_view(type_list<Exclude...> = {}) const {
+    template<typename... Component, typename... Exclude, typename... Induce>
+    inline entt::view<policy<Induce...>, Entity, Component...> view(type_list<Exclude...>, policy<Induce...>) const {
         static_assert(std::conjunction_v<std::is_const<Component>...>);
-        return const_cast<registry *>(this)->old_persistent_view<Component...>(type_list<Exclude...>{});
+        return const_cast<registry *>(this)->view<Component...>(type_list<Exclude...>{}, policy<Induce...>{});
     }
+
+    template<typename... Component, typename... Induce>
+    inline entt::view<policy<Induce...>, Entity, Component...> view(policy<Induce...>) {
+        return view<Component...>({}, policy<Induce...>{});
+    }
+
+    template<typename... Component, typename... Induce>
+    inline entt::view<policy<Induce...>, Entity, Component...> view(policy<Induce...>) const {
+        return view<Component...>({}, policy<Induce...>{});
+    }
+
+    // /**
+    //  * @brief Returns a persistent view for the given components.
+    //  *
+    //  * This kind of views are created on the fly and share with the registry its
+    //  * internal data structures.<br/>
+    //  * Feel free to discard a view after the use. Creating and destroying a view
+    //  * is an incredibly cheap operation because they do not require any type of
+    //  * initialization, but for the first time they are used. That's mainly
+    //  * because of the internal data structures of the registry that are
+    //  * dedicated to this kind of views and that don't exist yet the very first
+    //  * time they are requested.<br/>
+    //  * As a rule of thumb, storing a view should never be an option.
+    //  *
+    //  * Persistent views are the right choice to iterate entities when the number
+    //  * of components grows up and the most of the entities have all the given
+    //  * components. They are also the only type of views that supports filters
+    //  * without incurring in a loss of performance during iterations.<br/>
+    //  * However, persistent views have also drawbacks:
+    //  *
+    //  * * Each kind of persistent view requires a dedicated data structure that
+    //  *   is allocated within the registry and it increases memory pressure.
+    //  * * Internal data structures used to construct persistent views must be
+    //  *   kept updated and it affects slightly construction and destruction of
+    //  *   entities and components, as well as sort functionalities.
+    //  *
+    //  * That being said, persistent views are an incredibly powerful tool if used
+    //  * with care and offer a boost of performance undoubtedly.
+    //  *
+    //  * @sa view
+    //  * @sa view<Entity, Component>
+    //  * @sa persistent_view
+    //  * @sa runtime_view
+    //  *
+    //  * @tparam Component Types of components used to construct the view.
+    //  * @tparam Exclude Types of components used to filter the view.
+    //  * @return A newly created persistent view.
+    //  */
+    // template<typename... Component, typename... Exclude>
+    // entt::old_persistent_view<Entity, Component...> old_persistent_view(type_list<Exclude...> = {}) {
+    //     static_assert(sizeof...(Component));
+    //     using handler_type = type_list<Component..., type_list<Exclude...>>;
+    //     const auto htype = handler_family::type<handler_type>;
+    //
+    //     if(!(htype < handlers.size())) {
+    //         handlers.resize(htype + 1);
+    //     }
+    //
+    //     if(!handlers[htype]) {
+    //         (assure<Component>(), ...);
+    //         (assure<Exclude>(), ...);
+    //
+    //         handlers[htype] = std::make_unique<sparse_set<entity_type>>();
+    //         auto *direct = handlers[htype].get();
+    //
+    //         ((sighs[component_family::type<Component>].first.sink().template connect<&construct_if<handler_type, &registry::has<Component...>, &registry::has<Exclude>...>>()), ...);
+    //         ((sighs[component_family::type<Exclude>].second.sink().template connect<&construct_if<handler_type, &registry::has<Component...>, &registry::has<Exclude>...>>()), ...);
+    //         ((sighs[component_family::type<Exclude>].first.sink().template connect<&registry::destroy_if<handler_type>>()), ...);
+    //         ((sighs[component_family::type<Component>].second.sink().template connect<&registry::destroy_if<handler_type>>()), ...);
+    //
+    //         for(const auto entity: view<Component...>()) {
+    //             if(!(assure<Exclude>().has(entity) || ...)) {
+    //                 direct->construct(entity);
+    //             }
+    //         }
+    //     }
+    //
+    //     return { handlers[htype].get(), &assure<Component>()... };
+    // }
+    //
+    // /*! @copydoc persistent_view */
+    // template<typename... Component, typename... Exclude>
+    // inline entt::old_persistent_view<Entity, Component...> old_persistent_view(type_list<Exclude...> = {}) const {
+    //     static_assert(std::conjunction_v<std::is_const<Component>...>);
+    //     return const_cast<registry *>(this)->old_persistent_view<Component...>(type_list<Exclude...>{});
+    // }
 
     /**
      * @brief Returns a runtime view for the given components.
