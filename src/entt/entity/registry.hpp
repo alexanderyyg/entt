@@ -52,12 +52,46 @@ template<typename Entity = std::uint32_t>
 class registry {
     using component_family = family<struct internal_registry_component_family>;
     using handler_family = family<struct internal_registry_handler_family>;
+    using policy_family = family<struct internal_registry_policy_family>;
     using signal_type = sigh<void(registry &, const Entity)>;
     using traits_type = entt_traits<Entity>;
 
-    template<typename Type, auto Has, auto... Exclude>
+    struct policy_data {
+        using component_fn_type = bool(typename component_family::family_type);
+        typename sparse_set<Entity>::size_type length;
+        component_fn_type *owns_component;
+    };
+
+    template<typename...>
+    struct policy_rules;
+
+    template<typename... Type>
+    struct policy_rules<policy<Type...>> {
+        template<auto Has, auto Any>
+        static void induce_if(registry &reg, const Entity entity) {
+            if((reg.*Has)(entity) && !(reg.*Any)(entity)) {
+                auto &curr = reg.policies[policy_family::type<policy<Type...>>];
+                (std::swap(reg.assure<Type>().get(entity), reg.assure<Type>().raw()[curr.length]), ...);
+                (reg.assure<Type>().swap(reg.assure<Type>().sparse_set<entity_type>::get(entity), curr.length), ...);
+                ++curr.length;
+            }
+        }
+
+        template<auto Has, auto Any>
+        static void discard_if(registry &reg, const Entity entity) {
+            // TODO we could optimize by looking at the position
+            if((reg.*Has)(entity) && !(reg.*Any)(entity)) {
+                auto &curr = reg.policies[policy_family::type<policy<Type...>>];
+                --curr.length;
+                (std::swap(reg.assure<Type>().get(entity), reg.assure<Type>().raw()[curr.length]), ...);
+                (reg.assure<Type>().swap(reg.assure<Type>().sparse_set<entity_type>::get(entity), curr.length), ...);
+            }
+        }
+    };
+
+    template<typename Type, auto Has, auto Any>
     static void construct_if(registry &reg, const Entity entity) {
-        if((reg.*Has)(entity) && !((reg.*Exclude)(entity) || ...)) {
+        if((reg.*Has)(entity) && !(reg.*Any)(entity)) {
             reg.handlers[handler_family::type<Type>]->construct(entity);
         }
     }
@@ -69,6 +103,12 @@ class registry {
         if(handler->has(entity)) {
             handler->destroy(entity);
         }
+    }
+
+    template<typename... Component>
+    bool any_of(const Entity entity) const ENTT_NOEXCEPT {
+        assert(valid(entity));
+        return (assure<Component>().has(entity) || ...);
     }
 
     template<typename Component>
@@ -1069,8 +1109,43 @@ public:
 
     template<typename... Component, typename... Exclude, typename... Type>
     entt::view<policy<Type...>, Entity, Component...> view(type_list<Exclude...>, policy<Type...>) {
-        if(sizeof...(Type)) {
-            // TODO
+        if constexpr(sizeof...(Type)) {
+            // TODO static assert that Type are contained in Component
+            const auto ptype = policy_family::type<policy<Type...>>;
+
+            if(!(ptype < policies.size())) {
+                policies.resize(ptype + 1);
+            }
+
+            if(!policies[ptype].owns_component) {
+                // TODO use owns_component to assert on conflicting policies
+
+                (assure<Type>(), ...);
+
+                auto &curr = policies[ptype];
+
+                curr.length = {};
+                curr.owns_component = [](const component_type ctype) {
+                    return ((ctype == component_family::type<Type>) || ...);
+                };
+
+                ((sighs[component_family::type<Component>].first.sink().template connect<&policy_rules<policy<Type...>>::template induce_if<&registry::has<Component...>, &registry::any_of<Exclude...>>>()), ...);
+                ((sighs[component_family::type<Exclude>].second.sink().template connect<&policy_rules<policy<Type...>>::template induce_if<&registry::has<Component...>, &registry::any_of<Exclude...>>>()), ...);
+                ((sighs[component_family::type<Exclude>].first.sink().template connect<&policy_rules<policy<Type...>>::template discard_if<&registry::has<Component...>, &registry::any_of<Exclude...>>>()), ...);
+                ((sighs[component_family::type<Component>].second.sink().template connect<&policy_rules<policy<Type...>>::template discard_if<&registry::has<Component...>, &registry::any_of<Exclude...>>>()), ...);
+
+                // TODO reduce number of calls to assure
+
+                for(const auto entity: view<Component...>()) {
+                    if(!any_of<Exclude...>(entity)) {
+                        (std::swap(assure<Type>().get(entity), assure<Type>().raw()[curr.length]), ...);
+                        (assure<Type>().swap(assure<Type>().sparse_set<entity_type>::get(entity), curr.length), ...);
+                        ++curr.length;
+                    }
+                }
+            }
+
+            return { &policies[ptype].length, &assure<Component>()... };
         } else {
             using handler_type = type_list<Component..., type_list<Exclude...>>;
             const auto htype = handler_family::type<handler_type>;
@@ -1086,13 +1161,13 @@ public:
                 handlers[htype] = std::make_unique<sparse_set<entity_type>>();
                 auto *direct = handlers[htype].get();
 
-                ((sighs[component_family::type<Component>].first.sink().template connect<&construct_if<handler_type, &registry::has<Component...>, &registry::has<Exclude>...>>()), ...);
-                ((sighs[component_family::type<Exclude>].second.sink().template connect<&construct_if<handler_type, &registry::has<Component...>, &registry::has<Exclude>...>>()), ...);
+                ((sighs[component_family::type<Component>].first.sink().template connect<&construct_if<handler_type, &registry::has<Component...>, &registry::any_of<Exclude...>>>()), ...);
+                ((sighs[component_family::type<Exclude>].second.sink().template connect<&construct_if<handler_type, &registry::has<Component...>, &registry::any_of<Exclude...>>>()), ...);
                 ((sighs[component_family::type<Exclude>].first.sink().template connect<&registry::destroy_if<handler_type>>()), ...);
                 ((sighs[component_family::type<Component>].second.sink().template connect<&registry::destroy_if<handler_type>>()), ...);
 
                 for(const auto entity: view<Component...>()) {
-                    if(!(assure<Exclude>().has(entity) || ...)) {
+                    if(!any_of<Exclude...>(entity)) {
                         direct->construct(entity);
                     }
                 }
@@ -1349,6 +1424,7 @@ public:
     }
 
 private:
+    std::vector<policy_data> policies;
     std::vector<std::unique_ptr<sparse_set<Entity>>> handlers;
     mutable std::vector<std::unique_ptr<sparse_set<Entity>>> pools;
     mutable std::vector<std::pair<signal_type, signal_type>> sighs;

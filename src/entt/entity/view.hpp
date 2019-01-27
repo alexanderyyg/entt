@@ -429,7 +429,7 @@ class view<policy<Type...>, Entity, Component...> {
     using component_iterator_type = decltype(std::declval<pool_type<Comp>>().begin());
 
     // we could use pool_type<Component> *..., but vs complains about it and refuses to compile for unknown reasons (likely a bug)
-    view(typename sparse_set<Entity>::size_type length, sparse_set<Entity, std::remove_const_t<Component>> *... pools) ENTT_NOEXCEPT
+    view(const typename sparse_set<Entity>::size_type *length, sparse_set<Entity, std::remove_const_t<Component>> *... pools) ENTT_NOEXCEPT
         : length{length},
           pools{pools...}
     {}
@@ -455,11 +455,11 @@ public:
     view & operator=(view &&) = default;
 
     size_type size() const ENTT_NOEXCEPT {
-        return length;
+        return *length;
     }
 
     bool empty() const ENTT_NOEXCEPT {
-        return length;
+        return *length;
     }
 
     const entity_type * data() const ENTT_NOEXCEPT {
@@ -468,11 +468,11 @@ public:
 
     iterator_type begin() const ENTT_NOEXCEPT {
         const auto *cpool = std::get<0>(pools);
-        return cpool->begin() + cpool->size() - length;
+        return cpool->sparse_set<entity_type>::begin() + cpool->size() - *length;
     }
 
     iterator_type end() const ENTT_NOEXCEPT {
-        std::get<0>(pools)->end();
+        return std::get<0>(pools)->sparse_set<entity_type>::end();
     }
 
     iterator_type find(const entity_type entity) const ENTT_NOEXCEPT {
@@ -506,26 +506,26 @@ public:
     inline void each(Func func) const {
         if constexpr(std::is_invocable_v<Func, std::add_lvalue_reference_t<Component>...>) {
             if constexpr(sizeof...(Type) == sizeof...(Component)) {
-                auto raw = std::make_tuple((std::get<pool_type<Component> *>(pools)->begin()+length)...);
+                auto raw = std::make_tuple((std::get<pool_type<Component> *>(pools)->begin()+*length)...);
                 const auto cend = std::get<0>(pools)->cend();
 
                 while(std::get<0>(raw) != cend) {
                     func(*(std::get<component_iterator_type<Component>>(raw)++)...);
                 }
             } else {
-                std::for_each(begin(), end(), [func = std::move(func), raw = std::make_tuple((std::get<pool_type<Component> *>(pools)->begin()+length)...), this](const auto entity) {
+                std::for_each(begin(), end(), [func = std::move(func), raw = std::make_tuple((std::get<pool_type<Component> *>(pools)->begin()+*length)...), this](const auto entity) {
                     func(get(std::get<component_iterator_type<Component>>(raw), entity)...);
                 });
             }
         } else {
-            std::for_each(begin(), end(), [func = std::move(func), raw = std::make_tuple((std::get<pool_type<Component> *>(pools)->begin()+length)...), this](const auto entity) {
+            std::for_each(begin(), end(), [func = std::move(func), raw = std::make_tuple((std::get<pool_type<Component> *>(pools)->begin()+*length)...), this](const auto entity) {
                 func(entity, get(std::get<component_iterator_type<Component>>(raw), entity)...);
             });
         }
     }
 
 private:
-    const size_type length;
+    const typename sparse_set<Entity>::size_type *length;
     const std::tuple<pool_type<Component> *...> pools;
 };
 
