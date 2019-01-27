@@ -9,11 +9,11 @@ template<typename...>
 struct policy {};
 
 
-constexpr policy<> group_policy;
+constexpr policy<> group_policy{};
 
 
 template<typename... Type>
-constexpr policy<Type...> induce_policy;
+constexpr policy<Type...> induce_policy{};
 
 
 }
