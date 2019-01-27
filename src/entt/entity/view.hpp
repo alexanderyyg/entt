@@ -439,7 +439,7 @@ class view<policy<Type...>, Entity, Component...> {
         if constexpr(std::disjunction_v<std::is_same<Comp, Type>...>) {
             return *(it++);
         } else {
-            std::get<pool_type<Comp> *>(pools)->get(entity);
+            return std::get<pool_type<Comp> *>(pools)->get(entity);
         }
     }
 
@@ -463,20 +463,20 @@ public:
     }
 
     const entity_type * data() const ENTT_NOEXCEPT {
-        std::get<0>(pools)->data();
+        std::get<pool_type<std::tuple_element_t<0, std::tuple<Type...>>> *>(pools)->data();
     }
 
     iterator_type begin() const ENTT_NOEXCEPT {
-        const auto *cpool = std::get<0>(pools);
+        const auto *cpool = std::get<pool_type<std::tuple_element_t<0, std::tuple<Type...>>> *>(pools);
         return cpool->sparse_set<entity_type>::begin() + cpool->size() - *length;
     }
 
     iterator_type end() const ENTT_NOEXCEPT {
-        return std::get<0>(pools)->sparse_set<entity_type>::end();
+        return std::get<pool_type<std::tuple_element_t<0, std::tuple<Type...>>> *>(pools)->sparse_set<entity_type>::end();
     }
 
     iterator_type find(const entity_type entity) const ENTT_NOEXCEPT {
-        const auto *cpool = std::get<0>(pools);
+        const auto *cpool = std::get<pool_type<std::tuple_element_t<0, std::tuple<Type...>>> *>(pools);
         const auto it = cpool->find(entity);
         return (it != end() && *it == entity && it >= begin()) ? it : end();
     }
@@ -504,22 +504,22 @@ public:
 
     template<typename Func>
     inline void each(Func func) const {
-        if constexpr(std::is_invocable_v<Func, std::add_lvalue_reference_t<Component>...>) {
-            if constexpr(sizeof...(Type) == sizeof...(Component)) {
-                auto raw = std::make_tuple((std::get<pool_type<Component> *>(pools)->begin()+*length)...);
-                const auto cend = std::get<0>(pools)->cend();
+        auto raw = std::make_tuple((std::get<pool_type<Component> *>(pools)->begin() + std::get<pool_type<Component> *>(pools)->size() - *length)...);
 
-                while(std::get<0>(raw) != cend) {
+        if constexpr(std::is_invocable_v<Func, std::add_lvalue_reference_t<Component>...>) {
+            // TODO I don't think comparing sizeof... would fit with all cases :-)
+            if constexpr(sizeof...(Type) == sizeof...(Component)) {
+                for(auto i = *length; i; --i) {
                     func(*(std::get<component_iterator_type<Component>>(raw)++)...);
                 }
             } else {
-                std::for_each(begin(), end(), [func = std::move(func), raw = std::make_tuple((std::get<pool_type<Component> *>(pools)->begin()+*length)...), this](const auto entity) {
-                    func(get(std::get<component_iterator_type<Component>>(raw), entity)...);
+                std::for_each(begin(), end(), [func = std::move(func), &raw, this](const auto entity) {
+                    func(get<Component>(std::get<component_iterator_type<Component>>(raw), entity)...);
                 });
             }
         } else {
-            std::for_each(begin(), end(), [func = std::move(func), raw = std::make_tuple((std::get<pool_type<Component> *>(pools)->begin()+*length)...), this](const auto entity) {
-                func(entity, get(std::get<component_iterator_type<Component>>(raw), entity)...);
+            std::for_each(begin(), end(), [func = std::move(func), &raw, this](const auto entity) {
+                func(entity, get<Component>(std::get<component_iterator_type<Component>>(raw), entity)...);
             });
         }
     }

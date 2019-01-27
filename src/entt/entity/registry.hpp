@@ -1101,6 +1101,7 @@ public:
         return { &assure<Component>()... };
     }
 
+    /*! @copydoc view */
     template<typename... Component>
     inline entt::view<Entity, Component...> view() const {
         static_assert(std::conjunction_v<std::is_const<Component>...>);
@@ -1120,7 +1121,8 @@ public:
             if(!policies[ptype].owns_component) {
                 // TODO use owns_component to assert on conflicting policies
 
-                (assure<Type>(), ...);
+                (assure<Component>(), ...);
+                (assure<Exclude>(), ...);
 
                 auto &curr = policies[ptype];
 
@@ -1134,15 +1136,17 @@ public:
                 ((sighs[component_family::type<Exclude>].first.sink().template connect<&policy_rules<policy<Type...>>::template discard_if<&registry::has<Component...>, &registry::any_of<Exclude...>>>()), ...);
                 ((sighs[component_family::type<Component>].second.sink().template connect<&policy_rules<policy<Type...>>::template discard_if<&registry::has<Component...>, &registry::any_of<Exclude...>>>()), ...);
 
-                // TODO reduce number of calls to assure
+                const auto *cpool = std::min({ pools[component_family::type<Component>].get()... }, [](const auto *lhs, const auto *rhs) {
+                    return lhs->size() < rhs->size();
+                });
 
-                for(const auto entity: view<Component...>()) {
-                    if(!any_of<Exclude...>(entity)) {
+                std::for_each(cpool->data(), cpool->data() + cpool->size(), [&curr, this](const auto entity) {
+                    if(has<Component...>(entity) && !any_of<Exclude...>(entity)) {
                         (std::swap(assure<Type>().get(entity), assure<Type>().raw()[curr.length]), ...);
                         (assure<Type>().swap(assure<Type>().sparse_set<entity_type>::get(entity), curr.length), ...);
                         ++curr.length;
                     }
-                }
+                });
             }
 
             return { &policies[ptype].length, &assure<Component>()... };
@@ -1177,6 +1181,7 @@ public:
         }
     }
 
+    /*! @copydoc view */
     template<typename... Component, typename... Exclude, typename Policy>
     inline entt::view<Policy, Entity, Component...> view(type_list<Exclude...>, Policy) const {
         static_assert(std::conjunction_v<std::is_const<Component>...>);
@@ -1188,6 +1193,7 @@ public:
         return view<Component...>({}, Policy{});
     }
 
+    /*! @copydoc view */
     template<typename... Component, typename Policy>
     inline entt::view<Policy, Entity, Component...> view(Policy) const {
         return view<Component...>({}, Policy{});
