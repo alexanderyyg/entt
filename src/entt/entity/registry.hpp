@@ -21,7 +21,6 @@
 #include "../signal/sigh.hpp"
 #include "entity.hpp"
 #include "entt_traits.hpp"
-#include "policy.hpp"
 #include "snapshot.hpp"
 #include "sparse_set.hpp"
 #include "view.hpp"
@@ -31,11 +30,11 @@ namespace entt {
 
 
 /**
- * @brief Variable template for type lists.
+ * @brief Shortcut for exclusion lists.
  * @tparam Type List of types.
  */
 template<typename... Type>
-constexpr type_list<Type...> exclude;
+constexpr type_list<Type...> exclude{};
 
 
 /**
@@ -66,11 +65,11 @@ class registry {
     struct policy_rules;
 
     template<typename... Type>
-    struct policy_rules<policy<Type...>> {
+    struct policy_rules<policy_t<Type...>> {
         template<auto Has, auto Any>
         static void induce_if(registry &reg, const Entity entity) {
             if((reg.*Has)(entity) && !(reg.*Any)(entity)) {
-                auto &curr = reg.policies[policy_family::type<policy<Type...>>];
+                auto &curr = reg.policies[policy_family::type<policy_t<Type...>>];
                 (std::swap(reg.assure<Type>().get(entity), reg.assure<Type>().raw()[curr.length]), ...);
                 (reg.assure<Type>().swap(reg.assure<Type>().sparse_set<entity_type>::get(entity), curr.length), ...);
                 ++curr.length;
@@ -81,7 +80,7 @@ class registry {
         static void discard_if(registry &reg, const Entity entity) {
             // TODO we could optimize by looking at the position
             if((reg.*Has)(entity) && !(reg.*Any)(entity)) {
-                auto &curr = reg.policies[policy_family::type<policy<Type...>>];
+                auto &curr = reg.policies[policy_family::type<policy_t<Type...>>];
                 --curr.length;
                 (std::swap(reg.assure<Type>().get(entity), reg.assure<Type>().raw()[curr.length]), ...);
                 (reg.assure<Type>().swap(reg.assure<Type>().sparse_set<entity_type>::get(entity), curr.length), ...);
@@ -1109,10 +1108,10 @@ public:
     }
 
     template<typename... Component, typename... Exclude, typename... Type>
-    entt::view<policy<Type...>, Entity, Component...> view(type_list<Exclude...>, policy<Type...>) {
+    entt::view<policy_t<Type...>, Entity, Component...> view(type_list<Exclude...>, policy_t<Type...>) {
         if constexpr(sizeof...(Type)) {
             // TODO static assert that Type are contained in Component
-            const auto ptype = policy_family::type<policy<Type...>>;
+            const auto ptype = policy_family::type<policy_t<Type...>>;
 
             if(!(ptype < policies.size())) {
                 policies.resize(ptype + 1);
@@ -1131,10 +1130,10 @@ public:
                     return ((ctype == component_family::type<Type>) || ...);
                 };
 
-                ((sighs[component_family::type<Component>].first.sink().template connect<&policy_rules<policy<Type...>>::template induce_if<&registry::has<Component...>, &registry::any_of<Exclude...>>>()), ...);
-                ((sighs[component_family::type<Exclude>].second.sink().template connect<&policy_rules<policy<Type...>>::template induce_if<&registry::has<Component...>, &registry::any_of<Exclude...>>>()), ...);
-                ((sighs[component_family::type<Exclude>].first.sink().template connect<&policy_rules<policy<Type...>>::template discard_if<&registry::has<Component...>, &registry::any_of<Exclude...>>>()), ...);
-                ((sighs[component_family::type<Component>].second.sink().template connect<&policy_rules<policy<Type...>>::template discard_if<&registry::has<Component...>, &registry::any_of<Exclude...>>>()), ...);
+                ((sighs[component_family::type<Component>].first.sink().template connect<&policy_rules<policy_t<Type...>>::template induce_if<&registry::has<Component...>, &registry::any_of<Exclude...>>>()), ...);
+                ((sighs[component_family::type<Exclude>].second.sink().template connect<&policy_rules<policy_t<Type...>>::template induce_if<&registry::has<Component...>, &registry::any_of<Exclude...>>>()), ...);
+                ((sighs[component_family::type<Exclude>].first.sink().template connect<&policy_rules<policy_t<Type...>>::template discard_if<&registry::has<Component...>, &registry::any_of<Exclude...>>>()), ...);
+                ((sighs[component_family::type<Component>].second.sink().template connect<&policy_rules<policy_t<Type...>>::template discard_if<&registry::has<Component...>, &registry::any_of<Exclude...>>>()), ...);
 
                 const auto *cpool = std::min({ pools[component_family::type<Component>].get()... }, [](const auto *lhs, const auto *rhs) {
                     return lhs->size() < rhs->size();
@@ -1289,11 +1288,6 @@ public:
      * some external inputs and don't know at compile-time what are the required
      * components.<br/>
      * This is particularly well suited to plugin systems and mods in general.
-     *
-     * @sa view
-     * @sa view<Entity, Component>
-     * @sa persistent_view
-     * @sa runtime_view
      *
      * @tparam It Type of forward iterator.
      * @param first An iterator to the first element of the range of components.

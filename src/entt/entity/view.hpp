@@ -12,8 +12,8 @@
 #include <algorithm>
 #include <type_traits>
 #include "../config/config.h"
+#include "../core/type_traits.hpp"
 #include "entt_traits.hpp"
-#include "policy.hpp"
 #include "sparse_set.hpp"
 
 
@@ -25,6 +25,23 @@ namespace entt {
  */
 template<typename>
 class registry;
+
+
+template<typename... Type>
+using policy_t = type_list<Type...>;
+
+
+/*! @brief Shortcut for group policies. */
+constexpr type_list<> group_policy{};
+
+
+/**
+ * @brief Shortcut for generic policies.
+ * @tparam Type List of types.
+ */
+template<typename... Type>
+constexpr type_list<Type...> policy{};
+
 
 
 template<typename...>
@@ -327,7 +344,7 @@ private:
 
 
 template<typename Entity, typename... Component>
-class view<policy<>, Entity, Component...> {
+class view<policy_t<>, Entity, Component...> {
     friend class registry<Entity>;
 
     template<typename Comp>
@@ -419,7 +436,7 @@ private:
 
 
 template<typename... Type, typename Entity, typename... Component>
-class view<policy<Type...>, Entity, Component...> {
+class view<policy_t<Type...>, Entity, Component...> {
     friend class registry<Entity>;
 
     template<typename Comp>
@@ -1411,10 +1428,6 @@ private:
  * @warning
  * Lifetime of a view must overcome the one of the registry that generated it.
  * In any other case, attempting to use a view results in undefined behavior.
- *
- * @sa view
- * @sa view<Entity, Component>
- * @sa persistent_view
  *
  * @tparam Entity A valid entity type (see entt_traits for more details).
  */
