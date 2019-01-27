@@ -31,6 +31,14 @@ namespace entt {
 
 
 /**
+ * @brief Variable template for type lists.
+ * @tparam Type List of types.
+ */
+template<typename... Type>
+constexpr type_list<Type...> exclude;
+
+
+/**
  * @brief Fast and reliable entity-component system.
  *
  * The registry is the core class of the entity-component framework.<br/>
@@ -1059,9 +1067,9 @@ public:
         return const_cast<registry *>(this)->view<Component...>();
     }
 
-    template<typename... Component, typename... Exclude, typename... Induce>
-    entt::view<policy<Induce...>, Entity, Component...> view(type_list<Exclude...>, policy<Induce...>) {
-        if(sizeof...(Induce)) {
+    template<typename... Component, typename... Exclude, typename... Type>
+    entt::view<policy<Type...>, Entity, Component...> view(type_list<Exclude...>, policy<Type...>) {
+        if(sizeof...(Type)) {
             // TODO
         } else {
             using handler_type = type_list<Component..., type_list<Exclude...>>;
@@ -1094,20 +1102,20 @@ public:
         }
     }
 
-    template<typename... Component, typename... Exclude, typename... Induce>
-    inline entt::view<policy<Induce...>, Entity, Component...> view(type_list<Exclude...>, policy<Induce...>) const {
+    template<typename... Component, typename... Exclude, typename Policy>
+    inline entt::view<Policy, Entity, Component...> view(type_list<Exclude...>, Policy) const {
         static_assert(std::conjunction_v<std::is_const<Component>...>);
-        return const_cast<registry *>(this)->view<Component...>(type_list<Exclude...>{}, policy<Induce...>{});
+        return const_cast<registry *>(this)->view<Component...>(type_list<Exclude...>{}, Policy{});
     }
 
-    template<typename... Component, typename... Induce>
-    inline entt::view<policy<Induce...>, Entity, Component...> view(policy<Induce...>) {
-        return view<Component...>({}, policy<Induce...>{});
+    template<typename... Component, typename Policy>
+    inline entt::view<Policy, Entity, Component...> view(Policy) {
+        return view<Component...>({}, Policy{});
     }
 
-    template<typename... Component, typename... Induce>
-    inline entt::view<policy<Induce...>, Entity, Component...> view(policy<Induce...>) const {
-        return view<Component...>({}, policy<Induce...>{});
+    template<typename... Component, typename Policy>
+    inline entt::view<Policy, Entity, Component...> view(Policy) const {
+        return view<Component...>({}, Policy{});
     }
 
     // /**

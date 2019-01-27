@@ -78,15 +78,16 @@ public:
     }
 
     iterator_type find(const entity_type entity) const ENTT_NOEXCEPT {
-        return pool->find(entity);
+        const auto it = pool->find(entity);
+        return it != end() && *it == entity ? it : end();
     }
 
     entity_type operator[](const size_type pos) const ENTT_NOEXCEPT {
-        return pool->sparse_set<Entity>::begin()[pos];
+        return begin()[pos];
     }
 
     bool contains(const entity_type entity) const ENTT_NOEXCEPT {
-        return pool->has(entity) && (pool->data()[pool->sparse_set<Entity>::get(entity)] == entity);
+        return find(entity) != end();
     }
 
     raw_type & get(const entity_type entity) const ENTT_NOEXCEPT {
@@ -298,9 +299,7 @@ public:
     }
 
     bool contains(const entity_type entity) const ENTT_NOEXCEPT {
-        const auto sz = size_type(entity & traits_type::entity_mask);
-        const auto extent = std::min({ std::get<pool_type<Component> *>(pools)->extent()... });
-        return ((sz < extent) && ... && (std::get<pool_type<Component> *>(pools)->has(entity) && (std::get<pool_type<Component> *>(pools)->data()[std::get<pool_type<Component> *>(pools)->sparse_set<Entity>::get(entity)] == entity)));
+        return find(entity) != end();
     }
 
     template<typename... Comp>
@@ -372,15 +371,16 @@ public:
     }
 
     iterator_type find(const entity_type entity) const ENTT_NOEXCEPT {
-        return handler->find(entity);
+        const auto it = handler->find(entity);
+        return it != end() && *it == entity ? it : end();
     }
 
     entity_type operator[](const size_type pos) const ENTT_NOEXCEPT {
-        return handler->begin()[pos];
+        return begin()[pos];
     }
 
     bool contains(const entity_type entity) const ENTT_NOEXCEPT {
-        return handler->has(entity) && (handler->data()[handler->get(entity)] == entity);
+        return find(entity) != end();
     }
 
     template<typename... Comp>
@@ -418,9 +418,115 @@ private:
 };
 
 
-template<typename... Induce, typename Entity, typename... Component>
-class view<policy<Induce...>, Entity, Component...> {
-    // TODO
+template<typename... Type, typename Entity, typename... Component>
+class view<policy<Type...>, Entity, Component...> {
+    friend class registry<Entity>;
+
+    template<typename Comp>
+    using pool_type = std::conditional_t<std::is_const_v<Comp>, const sparse_set<Entity, std::remove_const_t<Comp>>, sparse_set<Entity, Comp>>;
+
+    template<typename Comp>
+    using component_iterator_type = decltype(std::declval<pool_type<Comp>>().begin());
+
+    // we could use pool_type<Component> *..., but vs complains about it and refuses to compile for unknown reasons (likely a bug)
+    view(typename sparse_set<Entity>::size_type length, sparse_set<Entity, std::remove_const_t<Component>> *... pools) ENTT_NOEXCEPT
+        : length{length},
+          pools{pools...}
+    {}
+
+    template<typename Comp>
+    inline Comp & get([[maybe_unused]] component_iterator_type<Comp> &it, [[maybe_unused]] const Entity entity) const ENTT_NOEXCEPT {
+        if constexpr(std::disjunction_v<std::is_same<Comp, Type>...>) {
+            return *(it++);
+        } else {
+            std::get<pool_type<Comp> *>(pools)->get(entity);
+        }
+    }
+
+public:
+    using entity_type = typename sparse_set<Entity>::entity_type;
+    using size_type = typename sparse_set<Entity>::size_type;
+    using iterator_type = typename sparse_set<Entity>::iterator_type;
+
+    view(const view &) = default;
+    view(view &&) = default;
+
+    view & operator=(const view &) = default;
+    view & operator=(view &&) = default;
+
+    size_type size() const ENTT_NOEXCEPT {
+        return length;
+    }
+
+    bool empty() const ENTT_NOEXCEPT {
+        return length;
+    }
+
+    const entity_type * data() const ENTT_NOEXCEPT {
+        std::get<0>(pools)->data();
+    }
+
+    iterator_type begin() const ENTT_NOEXCEPT {
+        const auto *cpool = std::get<0>(pools);
+        return cpool->begin() + cpool->size() - length;
+    }
+
+    iterator_type end() const ENTT_NOEXCEPT {
+        std::get<0>(pools)->end();
+    }
+
+    iterator_type find(const entity_type entity) const ENTT_NOEXCEPT {
+        const auto *cpool = std::get<0>(pools);
+        const auto it = cpool->find(entity);
+        return (it != end() && *it == entity && it >= begin()) ? it : end();
+    }
+
+    entity_type operator[](const size_type pos) const ENTT_NOEXCEPT {
+        return begin()[pos];
+    }
+
+    bool contains(const entity_type entity) const ENTT_NOEXCEPT {
+        return find(entity) != end();
+    }
+
+    template<typename... Comp>
+    std::conditional_t<sizeof...(Comp) == 1, std::tuple_element_t<0, std::tuple<Comp &...>>, std::tuple<Comp &...>>
+    get([[maybe_unused]] const entity_type entity) const ENTT_NOEXCEPT {
+        assert(contains(entity));
+
+        if constexpr(sizeof...(Comp) == 1) {
+            static_assert(std::disjunction_v<std::is_same<Comp..., Component>..., std::is_same<std::remove_const_t<Comp>..., Component>...>);
+            return (std::get<pool_type<Comp> *>(pools)->get(entity), ...);
+        } else {
+            return std::tuple<Comp &...>{get<Comp>(entity)...};
+        }
+    }
+
+    template<typename Func>
+    inline void each(Func func) const {
+        if constexpr(std::is_invocable_v<Func, std::add_lvalue_reference_t<Component>...>) {
+            if constexpr(sizeof...(Type) == sizeof...(Component)) {
+                auto raw = std::make_tuple((std::get<pool_type<Component> *>(pools)->begin()+length)...);
+                const auto cend = std::get<0>(pools)->cend();
+
+                while(std::get<0>(raw) != cend) {
+                    func(*(std::get<component_iterator_type<Component>>(raw)++)...);
+                }
+            } else {
+                std::for_each(begin(), end(), [func = std::move(func), raw = std::make_tuple((std::get<pool_type<Component> *>(pools)->begin()+length)...), this](const auto entity) {
+                    func(get(std::get<component_iterator_type<Component>>(raw), entity)...);
+                });
+            }
+        } else {
+            std::for_each(begin(), end(), [func = std::move(func), raw = std::make_tuple((std::get<pool_type<Component> *>(pools)->begin()+length)...), this](const auto entity) {
+                func(entity, get(std::get<component_iterator_type<Component>>(raw), entity)...);
+            });
+        }
+    }
+
+private:
+    const size_type length;
+    const std::tuple<pool_type<Component> *...> pools;
 };
 
 

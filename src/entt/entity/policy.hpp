@@ -13,7 +13,7 @@ constexpr policy<> group_policy;
 
 
 template<typename... Type>
-constexpr policy<Type...> induce;
+constexpr policy<Type...> induce_policy;
 
 
 }
