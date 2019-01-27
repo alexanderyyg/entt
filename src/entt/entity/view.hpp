@@ -440,6 +440,9 @@ class view<policy_t<Type...>, Entity, Component...> {
     friend class registry<Entity>;
 
     template<typename Comp>
+    static constexpr bool has_policy = std::disjunction_v<std::is_same<Comp, Type>...>;
+
+    template<typename Comp>
     using pool_type = std::conditional_t<std::is_const_v<Comp>, const sparse_set<Entity, std::remove_const_t<Comp>>, sparse_set<Entity, Comp>>;
 
     template<typename Comp>
@@ -450,15 +453,6 @@ class view<policy_t<Type...>, Entity, Component...> {
         : length{length},
           pools{pools...}
     {}
-
-    template<typename Comp>
-    inline Comp & get([[maybe_unused]] component_iterator_type<Comp> &it, [[maybe_unused]] const Entity entity) const ENTT_NOEXCEPT {
-        if constexpr(std::disjunction_v<std::is_same<Comp, Type>...>) {
-            return *(it++);
-        } else {
-            return std::get<pool_type<Comp> *>(pools)->get(entity);
-        }
-    }
 
 public:
     using entity_type = typename sparse_set<Entity>::entity_type;
@@ -521,23 +515,27 @@ public:
 
     template<typename Func>
     inline void each(Func func) const {
-        auto raw = std::make_tuple((std::get<pool_type<Component> *>(pools)->begin() + std::get<pool_type<Component> *>(pools)->size() - *length)...);
+        for(auto i = *length; i; --i) {
+            const auto offset = *length - 1;
+            [[maybe_unused]] const auto entity = *(std::get<pool_type<std::tuple_element_t<0, std::tuple<Type...>>> *>(pools)->data() + offset);
 
-        if constexpr(std::is_invocable_v<Func, std::add_lvalue_reference_t<Component>...>) {
-            // TODO I don't think comparing sizeof... would fit with all cases :-)
-            if constexpr(sizeof...(Type) == sizeof...(Component)) {
-                for(auto i = *length; i; --i) {
-                    func(*(std::get<component_iterator_type<Component>>(raw)++)...);
+            if constexpr(std::is_invocable_v<Func, std::add_lvalue_reference_t<Component>...>) {
+                // TODO I don't think comparing sizeof... would fit with all cases :-)
+                if constexpr(sizeof...(Type) == sizeof...(Component)) {
+                    func(*(std::get<pool_type<Component> *>(pools)->raw() + offset)...);
+                } else {
+                    // constexpr has_policy should allow any decent compiler to get rid of branches
+                    func((has_policy<Component> ? *(std::get<pool_type<Component> *>(pools)->raw() + offset) : std::get<pool_type<Component> *>(pools)->get(entity))...);
                 }
             } else {
-                std::for_each(begin(), end(), [func = std::move(func), &raw, this](const auto entity) {
-                    func(get<Component>(std::get<component_iterator_type<Component>>(raw), entity)...);
-                });
+                // TODO I don't think comparing sizeof... would fit with all cases :-)
+                if constexpr(sizeof...(Type) == sizeof...(Component)) {
+                    func(entity, *(std::get<pool_type<Component> *>(pools)->raw() + offset)...);
+                } else {
+                    // constexpr has_policy should allow any decent compiler to get rid of branches
+                    func(entity, (has_policy<Component> ? *(std::get<pool_type<Component> *>(pools)->raw() + offset) : std::get<pool_type<Component> *>(pools)->get(entity))...);
+                }
             }
-        } else {
-            std::for_each(begin(), end(), [func = std::move(func), &raw, this](const auto entity) {
-                func(entity, get<Component>(std::get<component_iterator_type<Component>>(raw), entity)...);
-            });
         }
     }
 
