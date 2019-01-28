@@ -517,17 +517,19 @@ public:
     inline void each(Func func) const {
         for(auto i = *length; i; --i) {
             const auto offset = *length - 1;
-            [[maybe_unused]] const auto entity = *(std::get<pool_type<std::tuple_element_t<0, std::tuple<Type...>>> *>(pools)->data() + offset);
 
             if constexpr(std::is_invocable_v<Func, std::add_lvalue_reference_t<Component>...>) {
                 // TODO I don't think comparing sizeof... would fit with all cases :-)
                 if constexpr(sizeof...(Type) == sizeof...(Component)) {
                     func(*(std::get<pool_type<Component> *>(pools)->raw() + offset)...);
                 } else {
+                    const auto entity = *(std::get<pool_type<std::tuple_element_t<0, std::tuple<Type...>>> *>(pools)->data() + offset);
                     // constexpr has_policy should allow any decent compiler to get rid of branches
                     func((has_policy<Component> ? *(std::get<pool_type<Component> *>(pools)->raw() + offset) : std::get<pool_type<Component> *>(pools)->get(entity))...);
                 }
             } else {
+                const auto entity = *(std::get<pool_type<std::tuple_element_t<0, std::tuple<Type...>>> *>(pools)->data() + offset);
+
                 // TODO I don't think comparing sizeof... would fit with all cases :-)
                 if constexpr(sizeof...(Type) == sizeof...(Component)) {
                     func(entity, *(std::get<pool_type<Component> *>(pools)->raw() + offset)...);
